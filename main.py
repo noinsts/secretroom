@@ -14,6 +14,8 @@ DESTINATION_CHANNEL_ID = cfg.DESTINATION_CHANNEL_ID  # Канал, куди пе
 WAITING_CHANNEL_ID = cfg.WAITING_CHANNEL_ID  # Канал очікування
 ADMIN_IDS = cfg.ADMIN_IDS  # Список ID адмінів
 ELITE_ROLE_ID = cfg.ELITE_ROLE_ID  # ID ролі "Еліт"
+CHANNEL_1_ID = cfg.CHANNEL_1_ID  # ID голосового каналу 1
+CHANNEL_2_ID = cfg.CHANNEL_2_ID  # ID голосового каналу 2
 
 intents = discord.Intents.default()
 intents.guilds = True
@@ -68,14 +70,10 @@ async def on_voice_state_update(member, before, after):
 async def eliteup(ctx, member: discord.Member):
     role = discord.utils.get(ctx.guild.roles, id=ELITE_ROLE_ID)
     if role:
-        try:
-            await member.add_roles(role)
-            await ctx.send(f'Роль "Еліт" додано користувачу {member.mention}')
-        except Exception as e:
-            await ctx.send(f'Виникла помилка: {e}')
+        await member.add_roles(role)
+        await ctx.send(f'Роль "Еліт" додано користувачу {member.mention}')
     else:
         await ctx.send('Роль "Еліт" не знайдено.')
-
 
 
 @bot.command()
@@ -87,6 +85,48 @@ async def elitedown(ctx, member: discord.Member):
         await ctx.send(f'Роль "Еліт" забрано у {member.mention}')
     else:
         await ctx.send('Роль "Еліт" не знайдено.')
+
+
+@bot.command()
+async def connect(ctx):
+    if ctx.author.voice and ctx.author.voice.channel:
+        channel = ctx.author.voice.channel
+        voice_client = discord.utils.get(bot.voice_clients, guild=ctx.guild)
+
+        if voice_client and voice_client.is_connected():
+            await voice_client.move_to(channel)
+        else:
+            await channel.connect()
+
+        await ctx.send(f'Підключився до {channel.name}')
+    else:
+        await ctx.send('Ви повинні бути у голосовому каналі, щоб викликати цю команду!')
+
+
+@bot.command()
+async def elitegrade(ctx):
+    """Переміщує всіх з CHANNEL_1 у CHANNEL_2"""
+    guild = bot.get_guild(GUILD_ID)
+    channel_1 = guild.get_channel(CHANNEL_1_ID)
+    channel_2 = guild.get_channel(CHANNEL_2_ID)
+
+    if channel_1 and channel_2:
+        for member in channel_1.members:
+            await member.move_to(channel_2)
+        await ctx.send("✅ Учасники переміщені у канал 2.")
+
+
+@bot.command()
+async def duograde(ctx):
+    """Переміщує всіх з CHANNEL_2 у CHANNEL_1"""
+    guild = bot.get_guild(GUILD_ID)
+    channel_1 = guild.get_channel(CHANNEL_1_ID)
+    channel_2 = guild.get_channel(CHANNEL_2_ID)
+
+    if channel_1 and channel_2:
+        for member in channel_2.members:
+            await member.move_to(channel_1)
+        await ctx.send("✅ Учасники повернені у канал 1.")
 
 
 bot.run(TOKEN)
