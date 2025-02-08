@@ -24,6 +24,7 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+user_last_channel = {}
 
 @bot.event
 async def on_ready():
@@ -127,6 +128,111 @@ async def duograde(ctx):
         for member in channel_2.members:
             await member.move_to(channel_1)
         await ctx.send("✅ Учасники повернені у канал 1.")
+
+
+@bot.command()
+async def ping(ctx):
+    await ctx.send("Pong!")
+
+
+@bot.command(aliases=["callme"])
+async def private(ctx, *usernames):
+    """Переміщує викликача і вказаних користувачів у вільний голосовий канал."""
+    guild = bot.get_guild(GUILD_ID)
+
+    # Перевірка, чи команда виконана в особистих повідомленнях
+    if not guild:
+        await ctx.send("❌ Ця команда працює лише в особистих повідомленнях.")
+        return
+
+    caller = guild.get_member(ctx.author.id)
+
+    if not caller or not caller.voice or not caller.voice.channel:
+        await ctx.send("❌ Ти повинен бути у голосовому каналі, щоб викликати когось.")
+        return
+
+    # Отримання ID користувачів з cfg
+    name_to_id = {
+        "kl": cfg.KLEN_ID,
+        "olg": cfg.OLEG_ID,
+        "dim": cfg.DIMA_ID,
+        "noi": cfg.AND_ID
+    }
+
+    target_members = []
+
+    for username in usernames:
+        if username.lower() in name_to_id:
+            target_id = name_to_id[username.lower()]
+            target_member = guild.get_member(target_id)
+
+            if not target_member or not target_member.voice or not target_member.voice.channel:
+                await ctx.send(f"❌ `{username}` не в голосовому каналі.")
+                return
+
+            target_members.append(target_member)
+        else:
+            await ctx.send(f"❌ `{username}` не знайдено в списку.")
+            return
+
+    # Отримуємо канал duo або інший вільний канал
+    duo_channel = guild.get_channel(CHANNEL_1_ID)
+    available_channels = [
+        ch for ch in guild.voice_channels if len(ch.members) == 0
+    ]
+
+    target_channel = duo_channel if duo_channel and len(duo_channel.members) == 0 else (
+        available_channels[0] if available_channels else None)
+
+    if not target_channel:
+        await ctx.send("❌ Немає доступних вільних каналів.")
+        return
+
+    # Переміщуємо всіх
+    await caller.move_to(target_channel)
+    for member in target_members:
+        await member.move_to(target_channel)
+
+    await ctx.send(f"✅ `{', '.join(usernames)}` переміщено до `{target_channel.name}`.")
+
+
+@bot.command()
+async def retu(ctx):
+    """Повертає всіх користувачів назад у їхні попередні голосові канали"""
+    guild = bot.get_guild(GUILD_ID)
+
+    if not guild:
+        await ctx.send("❌ Ця команда працює лише на сервері.")
+        return
+
+    caller = guild.get_member(ctx.author.id)
+
+    if not caller or not caller.voice or not caller.voice.channel:
+        await ctx.send("❌ Ти маєш бути в голосовому каналі, щоб повернути всіх назад.")
+        return
+
+    moved_users = [uid for uid, _ in user_last_channel.items() if uid in [m.id for m in caller.voice.channel.members]]
+
+    if not moved_users:
+        await ctx.send("❌ Немає користувачів, яких можна повернути.")
+        return
+
+    for user_id in moved_users:
+        member = guild.get_member(user_id)
+        last_channel_id = user_last_channel.get(user_id)
+
+        if member and last_channel_id:
+            last_channel = guild.get_channel(last_channel_id)
+
+            if last_channel and isinstance(last_channel, discord.VoiceChannel):
+                await member.move_to(last_channel)
+                await ctx.send(f"🔄 {member.display_name} повернуто в `{last_channel.name}`.")
+            else:
+                await ctx.send(f"❌ Канал для {member.display_name} більше не існує.")
+
+            # Видаляємо запис, щоб уникнути дублювання
+            del user_last_channel[user_id]
+
 
 
 bot.run(TOKEN)
