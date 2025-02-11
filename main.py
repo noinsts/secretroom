@@ -4,17 +4,6 @@ from discord.ext import commands
 import cfg
 from dotenv import load_dotenv
 
-load_dotenv()
-
-TOKEN = os.getenv('TOKEN')
-GUILD_ID = cfg.GUILD_ID  # ID серверу
-SOURCE_CHANNEL_ID = cfg.SOURCE_CHANNEL_ID  # Канал, з якого перекидати
-DESTINATION_CHANNEL_ID = cfg.DESTINATION_CHANNEL_ID  # Канал, куди перекидати
-WAITING_CHANNEL_ID = cfg.WAITING_CHANNEL_ID  # Канал очікування
-ADMIN_IDS = cfg.ADMIN_IDS  # Список ID адмінів
-ELITE_ROLE_ID = cfg.ELITE_ROLE_ID  # ID ролі "Еліт"
-CHANNEL_1_ID = cfg.CHANNEL_1_ID  # ID голосового каналу 1
-CHANNEL_2_ID = cfg.CHANNEL_2_ID  # ID голосового каналу 2
 
 intents = discord.Intents.default()
 intents.guilds = True
@@ -24,7 +13,6 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-user_last_channel = {}
 
 @bot.event
 async def on_ready():
@@ -33,9 +21,9 @@ async def on_ready():
 
 @bot.event
 async def on_voice_state_update(member, before, after):
-    if after.channel and after.channel.id == SOURCE_CHANNEL_ID:
+    if after.channel and after.channel.id == cfg.SOURCE_CHANNEL_ID:
         messages = []
-        for admin_id in ADMIN_IDS:
+        for admin_id in cfg.ADMIN_IDS:
             admin = bot.get_user(admin_id)
             if admin:
                 msg = await admin.send(f'Чи можна перемістити {member.display_name}?')
@@ -44,12 +32,12 @@ async def on_voice_state_update(member, before, after):
                 messages.append((msg, admin))
 
         def check(reaction, user):
-            return user.id in ADMIN_IDS and str(reaction.emoji) in ["✅", "❌"]
+            return user.id in cfg.ADMIN_IDS and str(reaction.emoji) in ["✅", "❌"]
 
         try:
             reaction, user = await bot.wait_for("reaction_add", timeout=30.0, check=check)
             if str(reaction.emoji) == "✅":
-                destination = discord.utils.get(member.guild.voice_channels, id=DESTINATION_CHANNEL_ID)
+                destination = discord.utils.get(member.guild.voice_channels, id=cfg.DESTINATION_CHANNEL_ID)
                 if destination:
                     await member.move_to(destination)
             elif str(reaction.emoji) == "❌":
@@ -59,8 +47,8 @@ async def on_voice_state_update(member, before, after):
             for msg, admin in messages:
                 await admin.send("Час на відповідь минув. Перекидання скасовано.")
 
-    if after.channel and after.channel.id == WAITING_CHANNEL_ID:
-        for admin_id in ADMIN_IDS:
+    if after.channel and after.channel.id == cfg.WAITING_CHANNEL_ID:
+        for admin_id in cfg.ADMIN_IDS:
             admin = bot.get_user(admin_id)
             if admin:
                 await admin.send(f'{member.display_name} зайшов у канал очікування!')
@@ -69,7 +57,7 @@ async def on_voice_state_update(member, before, after):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def eliteup(ctx, member: discord.Member):
-    role = discord.utils.get(ctx.guild.roles, id=ELITE_ROLE_ID)
+    role = discord.utils.get(ctx.guild.roles, id=cfg.ELITE_ROLE_ID)
     if role:
         await member.add_roles(role)
         await ctx.send(f'Елітку надано користувачу {member.mention}')
@@ -80,7 +68,7 @@ async def eliteup(ctx, member: discord.Member):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def elitedown(ctx, member: discord.Member):
-    role = discord.utils.get(ctx.guild.roles, id=ELITE_ROLE_ID)
+    role = discord.utils.get(ctx.guild.roles, id=cfg.ELITE_ROLE_ID)
     if role:
         await member.remove_roles(role)
         await ctx.send(f'Елітку забрано у {member.mention}')
@@ -107,9 +95,9 @@ async def connect(ctx):
 @bot.command(aliases=["fullgrade"])
 async def elitegrade(ctx):
     """Переміщує всіх з CHANNEL_1 у CHANNEL_2"""
-    guild = bot.get_guild(GUILD_ID)
-    channel_1 = guild.get_channel(CHANNEL_1_ID)
-    channel_2 = guild.get_channel(CHANNEL_2_ID)
+    guild = bot.get_guild(cfg.GUILD_ID)
+    channel_1 = guild.get_channel(cfg.CHANNEL_1_ID)
+    channel_2 = guild.get_channel(cfg.CHANNEL_2_ID)
 
     if channel_1 and channel_2:
         for member in channel_1.members:
@@ -120,9 +108,9 @@ async def elitegrade(ctx):
 @bot.command()
 async def duograde(ctx):
     """Переміщує всіх з CHANNEL_2 у CHANNEL_1"""
-    guild = bot.get_guild(GUILD_ID)
-    channel_1 = guild.get_channel(CHANNEL_1_ID)
-    channel_2 = guild.get_channel(CHANNEL_2_ID)
+    guild = bot.get_guild(cfg.GUILD_ID)
+    channel_1 = guild.get_channel(cfg.CHANNEL_1_ID)
+    channel_2 = guild.get_channel(cfg.CHANNEL_2_ID)
 
     if channel_1 and channel_2:
         for member in channel_2.members:
@@ -138,7 +126,7 @@ async def ping(ctx):
 @bot.command(aliases=["callme"])
 async def private(ctx, *usernames):
     """Переміщує викликача і вказаних користувачів у вільний голосовий канал."""
-    guild = bot.get_guild(GUILD_ID)
+    guild = bot.get_guild(cfg.GUILD_ID)
 
     # Перевірка, чи команда виконана в особистих повідомленнях
     if not guild:
@@ -176,7 +164,7 @@ async def private(ctx, *usernames):
             return
 
     # Отримуємо канал duo або інший вільний канал
-    duo_channel = guild.get_channel(CHANNEL_1_ID)
+    duo_channel = guild.get_channel(cfg.CHANNEL_1_ID)
     available_channels = [
         ch for ch in guild.voice_channels if len(ch.members) == 0
     ]
@@ -196,48 +184,10 @@ async def private(ctx, *usernames):
     await ctx.send(f"✅ `{', '.join(usernames)}` переміщено до `{target_channel.name}`.")
 
 
-@bot.command()
-async def retu(ctx):
-    """Повертає всіх користувачів назад у їхні попередні голосові канали"""
-    guild = bot.get_guild(GUILD_ID)
-
-    if not guild:
-        await ctx.send("❌ Ця команда працює лише на сервері.")
-        return
-
-    caller = guild.get_member(ctx.author.id)
-
-    if not caller or not caller.voice or not caller.voice.channel:
-        await ctx.send("❌ Ти маєш бути в голосовому каналі, щоб повернути всіх назад.")
-        return
-
-    moved_users = [uid for uid, _ in user_last_channel.items() if uid in [m.id for m in caller.voice.channel.members]]
-
-    if not moved_users:
-        await ctx.send("❌ Немає користувачів, яких можна повернути.")
-        return
-
-    for user_id in moved_users:
-        member = guild.get_member(user_id)
-        last_channel_id = user_last_channel.get(user_id)
-
-        if member and last_channel_id:
-            last_channel = guild.get_channel(last_channel_id)
-
-            if last_channel and isinstance(last_channel, discord.VoiceChannel):
-                await member.move_to(last_channel)
-                await ctx.send(f"🔄 {member.display_name} повернуто в `{last_channel.name}`.")
-            else:
-                await ctx.send(f"❌ Канал для {member.display_name} більше не існує.")
-
-            # Видаляємо запис, щоб уникнути дублювання
-            del user_last_channel[user_id]
-
-
 @bot.command(aliases=["кс"])
 async def cs(ctx, *args):
     """Тегає вибраних людей або всіх (окрім того, хто викликав) для гри в CS"""
-    guild = bot.get_guild(GUILD_ID)
+    guild = bot.get_guild(cfg.GUILD_ID)
 
     if ctx.channel.id != cfg.MAIN_CHAT_ID:
         await ctx.send("❌ Цю команду можна використовувати тільки у головному чаті.")
@@ -268,7 +218,7 @@ async def cs(ctx, *args):
 @bot.command(aliases=["войс"])
 async def voice(ctx, *args):
     """Тегає вибраних людей або всіх (окрім того, хто викликав) заклику в войс"""
-    guild = bot.get_guild(GUILD_ID)
+    guild = bot.get_guild(cfg.GUILD_ID)
 
     if ctx.channel.id != cfg.MAIN_CHAT_ID:
         await ctx.send("❌ Цю команду можна використовувати тільки у головному чаті.")
@@ -303,4 +253,5 @@ async def voice(ctx, *args):
 
 
 if __name__ == '__main__':
-    bot.run(TOKEN)
+    load_dotenv()
+    bot.run(os.getenv('TOKEN'))
