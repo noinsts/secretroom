@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import cfg
 
+
 class Chat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -43,6 +44,20 @@ class Chat(commands.Cog):
 
         mention_text = " ".join(mentions)
         await ctx.send(f"🎮 {ctx.author.mention} зве {mention_text} в войс!")
+
+    @commands.command(name="helpme")
+    async def help_command(self, ctx):
+        """Відправляє вміст README.md у чат"""
+        try:
+            with open("HELPME.md", "r", encoding="utf-8") as file:
+                content = file.read()
+
+            if len(content) > 2000:
+                content = content[:1997] + "..."  # Обрізаємо, щоб вмістилося в одне повідомлення
+
+            await ctx.send(content)
+        except Exception as e:
+            await ctx.send(f"❌ Помилка: {e}")
 
 
 async def setup(bot):
