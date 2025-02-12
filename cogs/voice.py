@@ -2,9 +2,48 @@ import discord
 from discord.ext import commands
 import cfg
 
+
 class Voice(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        if after.channel and after.channel.id == cfg.SOURCE_CHANNEL_ID:
+            messages = []
+            for admin_id in cfg.ADMIN_IDS:
+                admin = self.bot.get_user(admin_id)
+                if admin:
+                    msg = await admin.send(f'Чи можна перемістити {member.display_name}?')
+                    await msg.add_reaction("✅")
+                    await msg.add_reaction("❌")
+                    messages.append((msg, admin))
+
+            def check(reaction, user):
+                return user.id in cfg.ADMIN_IDS and str(reaction.emoji) in ["✅", "❌"]
+
+            try:
+                reaction, user = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
+                if str(reaction.emoji) == "✅":
+                    admin = user
+                    if admin.voice and admin.voice.channel:
+                        await member.move_to(admin.voice.channel)
+                    else:
+                        destination = discord.utils.get(member.guild.voice_channels, id=cfg.DESTINATION_CHANNEL_ID)
+                        if destination:
+                            await member.move_to(destination)
+                elif str(reaction.emoji) == "❌":
+                    for msg, admin in messages:
+                        await admin.send("Переміщення скасовано.")
+            except:
+                for msg, admin in messages:
+                    await admin.send("Час на відповідь минув. Перекидання скасовано.")
+
+        if after.channel and after.channel.id == cfg.WAITING_CHANNEL_ID:
+            for admin_id in cfg.ADMIN_IDS:
+                admin = self.bot.get_user(admin_id)
+                if admin:
+                    await admin.send(f'{member.display_name} зайшов у канал очікування!')
 
     @commands.command()
     async def private(self, ctx, *usernames):
