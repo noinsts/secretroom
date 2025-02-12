@@ -8,7 +8,7 @@ class Chat(commands.Cog):
 
     @commands.command()
     async def ping(self, ctx):
-        await ctx.send("Pong!")
+        await ctx.send("Barak Obama!")
 
     @commands.command(aliases=["кс"])
     async def cs(self, ctx, *args):
