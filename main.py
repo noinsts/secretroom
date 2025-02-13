@@ -12,7 +12,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Завантажуємо Cogs
-cogs = ["cogs.roles", "cogs.voice", "cogs.chat"]
+cogs = ["cogs.roles", "cogs.voice", "cogs.chat", "cogs.moderation"]
 
 
 @bot.event
