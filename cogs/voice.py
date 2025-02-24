@@ -93,6 +93,25 @@ class Voice(commands.Cog):
                 await member.move_to(channel_1)
             await ctx.send(f"✅ Учасники переміщені у {channel_1.name}")
 
+    @commands.command()
+    async def vc_slots(self, ctx, action: str, amount: int):
+        if ctx.author.voice and ctx.author.voice.channel:
+            channel = ctx.author.voice.channel
+            new_limit = channel.user_limit
+
+            if action.lower() == "add":
+                new_limit += amount
+            elif action.lower() == "remove":
+                new_limit = max(0, new_limit - amount)
+            else:
+                await ctx.send("Неправильна команда! Використовуйте `add` або `remove`.")
+                return
+
+            await channel.edit(user_limit=new_limit)
+            await ctx.send(f"Слоти у каналі **{channel.name}** змінено на {new_limit}.")
+        else:
+            await ctx.send("Ви повинні бути у голосовому каналі, щоб змінювати кількість слотів!")
+
 
 async def setup(bot):
     await bot.add_cog(Voice(bot))
