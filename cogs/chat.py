@@ -74,16 +74,16 @@ class Chat(commands.Cog):
             if member.bot:
                 continue  # Пропускаємо ботів
 
-            activity_name = "```Онлайн```"
+            activity_name = "\n```Онлайн```"
             if member.activity:
                 if isinstance(member.activity, discord.Game):
-                    activity_name = f"```{member.activity.name}```"
+                    activity_name = f"\n```{member.activity.name}```"
                 elif isinstance(member.activity, discord.Streaming):
-                    activity_name = f"```{member.activity.name}``` (📺 Стрім)"
+                    activity_name = f"\n```{member.activity.name}``` (📺 Стрім)"
                 elif isinstance(member.activity, discord.Spotify):
-                    activity_name = f"```Spotify: {member.activity.title}```"
+                    activity_name = f"\n```Spotify: {member.activity.title}```"
                 elif isinstance(member.activity, discord.Activity) and member.activity.name:
-                    activity_name = f"```{member.activity.name}```"
+                    activity_name = f"\n```{member.activity.name}```"
 
             if member.status in (discord.Status.online, discord.Status.idle, discord.Status.dnd):
                 activities[activity_name].append(member.display_name)
@@ -92,7 +92,7 @@ class Chat(commands.Cog):
                 voice_channels[member.voice.channel.name].append(member.display_name)
 
         # Формуємо текст
-        text = "**📡 Люди онлайн:**\n\n"
+        text = "**📡 Люди онлайн:**\n"
         if activities:
             for activity, users in activities.items():
                 text += f"{activity}\n" + "\n".join(f"➤ {user}" for user in users) + "\n"
